@@ -2,7 +2,7 @@
 var restify = require('restify'); 
 var builder = require('botbuilder'); 
 var sql = require('mssql');
-
+/*
 // Setup Restify Server
 var server = restify.createServer();
 server.listen(process.env.PORT || 3000, function() 
@@ -19,8 +19,8 @@ server.get('/', restify.serveStatic({
  directory: __dirname,
  default: '/index.html'
 }));
-
-//var connector = new builder.ConsoleConnector().listen();		//console test
+*/
+var connector = new builder.ConsoleConnector().listen();		//console test
 
 var bot = new builder.UniversalBot(connector);
 bot.dialog('/', [
@@ -46,7 +46,7 @@ bot.dialog('/', [
 				var query, msg;
 				switch(results.response){
 					case 1:
-						query = 'SELECT TOP 2 DeviceId FROM Data ORDER BY time DESC';
+						query = 'SELECT TOP 1 DeviceId FROM Data ORDER BY time DESC';
 						msg = "The agent ID of the latest submission is ";
 						break;
 					case 2:
