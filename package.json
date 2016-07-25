@@ -1,0 +1,19 @@
+{
+  "name": "nodebot",
+  "version": "1.0.0",
+  "description": "test",
+  "main": "app.js",
+  "dependencies": {
+    "botbuilder": "^3.0.1",
+    "express": "^4.14.0",
+    "git": "^0.1.5",
+    "https": "^1.0.0",
+    "restify": "^4.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "test"
+  },
+  "author": "",
+  "license": "ISC"
+}
