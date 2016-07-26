@@ -6,7 +6,7 @@ var sql = require('mssql');
 // Setup Restify Server
 var server = restify.createServer();
 server.use(restify.bodyParser());
-server.listen(process.env.PORT || 4001, function() 
+server.listen(process.env.PORT || 80, function() 
 {
    console.log('%s listening to %s', server.name, server.url); 
 });
@@ -34,7 +34,7 @@ bot.dialog('/', [
 			session.send("ok");
 			server.post('/testestest', function(req, res){
 				//var body = JSON.parse(req);
-				session.send("DeviceId: " + req.body.deviceid + "\ntemp: " + req.body.temp + "\nspeed: " + req.body.speed + "\ntime: " + req.body.time);
+				session.send("DeviceId: %s\ntemp: %s\nspeed: %s\ntime: %s", req.body.deviceid, req.body.temp, req.body.speed, req.body.time);
 				res.send(202);
 			});
 		}
