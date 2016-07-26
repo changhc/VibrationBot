@@ -25,7 +25,7 @@ server.get('/', restify.serveStatic({
 var bot = new builder.UniversalBot(connector);
 bot.dialog('/', [
 	function (session) {
-		session.send(session);
+		session.send(session.conversationData);
 		session.send("Hi %s, what would you like to know about?", session.userData.name);
 		builder.Prompts.number(session, "1. The agent ID of the latest submission\n2. The latest submission time\n3. The latest temperature data\n4. The latest speed data");
 	},
