@@ -2,7 +2,7 @@
 var restify = require('restify'); 
 var builder = require('botbuilder'); 
 var sql = require('mssql');
-
+/*
 // Setup Restify Server
 var server = restify.createServer();
 server.listen(process.env.PORT || 3000, function() 
@@ -19,12 +19,13 @@ server.get('/', restify.serveStatic({
  directory: __dirname,
  default: '/index.html'
 }));
-
-//var connector = new builder.ConsoleConnector().listen();		//console test
+*/
+var connector = new builder.ConsoleConnector().listen();		//console test
 
 var bot = new builder.UniversalBot(connector);
 bot.dialog('/', [
 	function (session) {
+		session.send(session);
 		session.send("Hi %s, what would you like to know about?", session.userData.name);
 		builder.Prompts.number(session, "1. The agent ID of the latest submission\n2. The latest submission time\n3. The latest temperature data\n4. The latest speed data");
 	},
@@ -43,6 +44,7 @@ bot.dialog('/', [
 						encrypt: true // Use this if you're on Windows Azure
 					}
 				}
+				console.dir(config);
 				var query, msg;
 				switch(results.response){
 					case 1:
@@ -71,10 +73,11 @@ bot.dialog('/', [
 						session.send("DB ERROR");
 						session.endDialog();
 					}
+					console.log(err);
 					var request = new sql.Request();
 					
 					request.query(query, function(err, recordset){
-						
+						console.log(err);
 						value = recordset;
 						switch(results.response){
 							case 1:
