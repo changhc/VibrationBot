@@ -6,7 +6,7 @@ var sql = require('mssql');
 // Setup Restify Server
 var server = restify.createServer();
 server.use(restify.bodyParser());
-server.listen(process.env.PORT || 80, function() 
+server.listen(process.env.PORT || process.env.port || 3000, function() 
 {
    console.log('%s listening to %s', server.name, server.url); 
 });
@@ -21,16 +21,16 @@ server.get('/', restify.serveStatic({
  default: '/index.html'
 }));
 
-//var connector = new builder.ConsoleConnector().listen();		//console test
-
+//var connector = new builder.ConsoleConnector().listen();		//console test 
 var bot = new builder.UniversalBot(connector);
 bot.dialog('/', [
+
 	function (session) {
 		session.send("Hi %s, what would you like to know about?", session.userData.name);
 		builder.Prompts.number(session, "1. The agent ID of the latest submission\n2. The latest submission time\n3. The latest temperature data\n4. The latest speed data");
 	},
 	function(session, results){
-		if(results.response){
+		if(results.response == 1){
 			session.send("ok");
 			server.post('/testestest', function(req, res){
 				//var body = JSON.parse(req);
