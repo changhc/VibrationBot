@@ -2,7 +2,6 @@
 var restify = require('restify'); 
 var builder = require('botbuilder'); 
 var sql = require('mssql');
-
 // Setup Restify Server
 var server = restify.createServer();
 server.use(restify.bodyParser());
@@ -21,8 +20,15 @@ server.get('/', restify.serveStatic({
  default: '/index.html'
 }));
 
+server.post('/testestest', function(req, res){
+	if(sess.userData.ReceiveAlert)
+		sess.send("DeviceId: %s\ntemp: %s\nspeed: %s\ntime: %s", req.body.deviceid, req.body.temp, req.body.speed, req.body.time);
+	res.send(202);
+});
+
 //var connector = new builder.ConsoleConnector().listen();		//console test 
 var bot = new builder.UniversalBot(connector);
+var sess;
 bot.dialog('/', [
 
 	function (session) {
@@ -32,11 +38,9 @@ bot.dialog('/', [
 	function(session, results){
 		if(results.response == 1){
 			session.send("ok");
-			server.post('/testestest', function(req, res){
-				//var body = JSON.parse(req);
-				session.send("DeviceId: %s\ntemp: %s\nspeed: %s\ntime: %s", req.body.deviceid, req.body.temp, req.body.speed, req.body.time);
-				res.send(202);
-			});
+			session.userData.ReceiveAlert = true;
+			session.send(session.userData);
+			sess = session;
 		}
 	}
 	/*
@@ -140,6 +144,7 @@ bot.dialog('/firstRun', [
 		// the conversation would end since the /firstRun dialog is the only 
 		// dialog on the stack.
 		session.userData.name = results.response;
+		session.userData.ReceiveAlert = false;
 		session.replaceDialog('/'); 
 	}
 ]);
