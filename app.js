@@ -96,15 +96,7 @@ var config = {
 }
 //var connector = new builder.ConsoleConnector().listen();		//console test 
 var bot = new builder.UniversalBot(connector);
-/*
-bot.dialog('/notify', function (session) {
-   session.endDialog("I'm sending you a proactive message!");
-});
-bot.beginDialog({
-     to: { name: "User1", channelId: "emulator" , id: "2c1c7fa3"},
-     from: { name: "Bot1", channelId: "emulator", id: "56800324" }
- }, '/notify');
-*/
+
 bot.dialog('/', [
 
 	function (session) {
