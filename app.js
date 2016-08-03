@@ -11,8 +11,8 @@ server.listen(process.env.PORT || process.env.port || 3000, function()
 });
 
 // Create chat bot
-var connector = new builder.ChatConnector
-({ appId: process.env.APP_ID, appPassword: process.env.APP_PW }); 
+var connector = new builder.ChatConnector();
+
 server.post('/api/messages', connector.listen());
 
 server.get('/', restify.serveStatic({
@@ -41,6 +41,7 @@ server.post('/testestest', function(req, res){
 			for(i = 0; i < recordset.length; ++i){
 				//console.log(sess.message.address);
 				try{
+					//var msg = new builder.Message();
 					var addr = {
 						'channelId': recordset[i].ChannelId,
 						'conversation': {
@@ -54,7 +55,8 @@ server.post('/testestest', function(req, res){
 						},
 						'serviceUrl': recordset[i].ServiceURL
 					};
-					console.log(addr && addr.user && addr.bot && addr.serviceUrl);
+					//msg.address(addr);
+					console.log(addr);
 					/*
 				sess.message.address.channelId = 
 				sess.message.address.conversation.id = ;
@@ -66,7 +68,14 @@ server.post('/testestest', function(req, res){
 				//console.log(sess);
 				sess.send("DeviceId: %s\r\ntemp: %s\r\nspeed: %s\r\ntime: %s", msg.body.deviceid, msg.body.temp, msg.body.speed, msg.body.time);
 				*/
+					//bot.connector(recordset[i].ChannelId, connector);
 					bot.beginDialog(addr, '/alert', msg);
+					//msg.text(req);
+
+						//var tmp = bot.send(msg);
+						//console.log(tmp);
+
+					
 				}
 				catch(err){
 					console.log(err);
@@ -225,10 +234,17 @@ bot.dialog('/', [
 ]);
 
 bot.dialog('/alert', function(session){
-	var msg = session.options.dialogArgs.params;
+	//console.log(session);
+	try{
+		//console.log(session.options.dialogArgs.params);
+		var msg = session.options.dialogArgs.params;
 	//console.log(session.options.dialogArgs.params);
 	session.send("DeviceId: %s\r\ntemp: %s\r\nspeed: %s\r\ntime: %s", msg.deviceid, msg.temp, msg.speed, msg.time);
 	session.endDialog();
+	} catch(err){
+		console.log(err);
+	}
+	
 });
 
 // Install First Run middleware and dialog
