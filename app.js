@@ -11,8 +11,8 @@ server.listen(process.env.PORT || process.env.port || 3000, function()
 });
 
 // Create chat bot
-var connector = new builder.ChatConnector();
-
+var connector = new builder.ChatConnector
+({ appId: process.env.APP_ID, appPassword: process.env.APP_PW }); 
 server.post('/api/messages', connector.listen());
 
 server.get('/', restify.serveStatic({
