@@ -110,7 +110,7 @@ bot.dialog('/', [
 
 	function (session) {
 		sess = session;
-		//console.dir(session.message);
+		session.send(session.message);
 		builder.Prompts.number(session, "Hi " + session.userData.name + ", what would you like to know about?\n\r1. The agent ID of the latest submission\n2. The latest submission time\n3. The latest temperature data\n4. The latest speed data");
 	},
 	function(session, results){
