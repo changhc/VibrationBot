@@ -53,7 +53,8 @@ server.post('/testestest', function(req, res){
 						'bot': {
 							'id': recordset[i].BotId
 						},
-						'serviceUrl': recordset[i].ServiceURL
+						'serviceUrl': recordset[i].ServiceURL,
+						'useAuth': true
 					};
 					//msg.address(addr);
 					console.log(addr);
