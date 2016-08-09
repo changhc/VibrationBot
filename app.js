@@ -163,7 +163,7 @@ bot.dialog('/', [
 			}
 		}
 		else if(results.response == 4){
-			var query = "DELETE FROM AlertSubscription WHERE UserId = " + session.message.address.user.id;
+			var query = "DELETE FROM AlertSubscription WHERE UserId = '" + session.message.address.user.id + "'";
 			console.log(session.message.address.user.id);
 			sql.connect(config, function(err) {
 				if(err) {
