@@ -158,7 +158,7 @@ bot.dialog('/', [
 				
 				request.query(query, function(err, recordset){
 					console.log(err);
-					if(err == undefined) session.userData.ReceiveAlert = true;
+					//if(err == undefined) session.userData.ReceiveAlert = true;
 					session.send("You have unsubscribed.");
 					session.endDialog();
 					session.beginDialog('/');
