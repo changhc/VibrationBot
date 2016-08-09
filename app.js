@@ -217,7 +217,7 @@ bot.dialog('/query-interval', [
 bot.dialog('/alert', function(session){
 	try{
 		var msg = session.options.dialogArgs.params;
-		session.send("WARNING: " + msg.Result + " at " + msg.Timestamp);
+		session.send("WARNING: " + msg.result + " at " + msg.timestamp);
 		session.endDialog();
 	} catch(err){
 		console.log(err);
