@@ -100,26 +100,10 @@ var bot = new builder.UniversalBot(connector);
 bot.dialog('/', [
 
 	function (session) {
-		builder.Prompts.number(session, "Hi " + session.userData.name + ", what would you like to know about?\n\r1. Current status\n2. Previous warnings\n3. Unsubscribe");
+		builder.Prompts.number(session, "Hi " + session.userData.name + ", what would you like to know about?\n\r1. Current status\n\r2. Previous warnings\n\r3. Subscribe\n\r4. Unsubscribe");
 	},
 	function(session, results){
-		if(!session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
-			var query = "INSERT INTO AlertSubscription (ChannelId, ConvId, UserName, BotId, UserId, ServiceURL) VALUES ('" + session.message.address.channelId + "', '" + session.message.address.conversation.id + "', '" + session.userData.name + "', '" + session.message.address.bot.id + "', '" + session.message.address.user.id + "', '" + session.message.address.serviceUrl + "');";
-			sql.connect(config, function(err) {
-				if(err) {
-					session.send("DB ERROR");
-					session.endDialog();
-				}
-				var request = new sql.Request();
-				
-				request.query(query, function(err, recordset){
-					console.log(err);
-					if(err == undefined) session.userData.ReceiveAlert = true;
-					session.send("You are now subscribed.");
-				});
-				
-			});
-		}
+		
 		if(results.response == 1) {
 			var value, time;
 			sql.connect(config, function(err) {
@@ -146,8 +130,40 @@ bot.dialog('/', [
 			session.endDialog();
 			session.beginDialog('/query-interval');
 		}
-		else if(results.response == 3){
-			var query = "DELETE FROM AlertSubscription WHERE UserId = '" + session.message.address.user.id + "'";
+		else if (results.response == 3) {
+			if(!session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
+				var query = "INSERT INTO AlertSubscription (ChannelId, ConvId, UserName, BotId, UserId, ServiceURL) VALUES ('" + session.message.address.channelId + "', '" + session.message.address.conversation.id + "', '" + session.userData.name + "', '" + session.message.address.bot.id + "', '" + session.message.address.user.id + "', '" + session.message.address.serviceUrl + "');";
+				sql.connect(config, function(err) {
+					if(err) {
+						session.send("DB ERROR");
+						session.endDialog();
+					}
+					var request = new sql.Request();
+					
+					request.query(query, function(err, recordset){
+						console.log(err);
+						if(err == undefined) session.userData.ReceiveAlert = true;
+						subscribe_msg(session, function(session){
+							session.endDialog();
+							session.beginDialog('/');
+						});
+					});
+					
+				});
+			}
+			else if(session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
+				session.send("You have already subscribed.");
+				session.endDialog();
+				session.beginDialog('/');
+			}
+			else{
+				session.send("Sorry, only Skype users can subscribe.");
+				session.endDialog();
+				session.beginDialog('/');
+			}
+		}
+		else if(results.response == 4){
+			var query = "DELETE FROM AlertSubscription WHERE UserId = " + session.message.address.user.id;
 			console.log(session.message.address.user.id);
 			sql.connect(config, function(err) {
 				if(err) {
@@ -260,5 +276,10 @@ function send_msg(recordset, session, callback){
 		}
 	}
 	session.send(msg);
+	callback(session);
+}
+
+function subscribe_msg(session, callback){
+	session.send("You are now subscribed.");
 	callback(session);
 }
