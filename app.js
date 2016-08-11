@@ -59,10 +59,11 @@ server.post('/testestest', function(req, res){
 							'serviceUrl': recordset[i].ServiceURL,
 							'useAuth': true
 						};
+						var text = "WARNING: " + msg.body.result + " at " + msg.body.timestamp;
 						var message = {
 							address: addr,
 							user: addr.user,
-							text: "WARNING: " + msg.body.result + " at " + msg.body.timestamp
+							text: text
 						};
 						
 						bot.send(message);
