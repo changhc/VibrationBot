@@ -59,11 +59,12 @@ server.post('/testestest', function(req, res){
 							'serviceUrl': recordset[i].ServiceURL,
 							'useAuth': true
 						};
-						var message = new Object();
-						message.address = addr;
-						message.user = addr.user;
-						message.text = "WARNING: " + msg.body.result + " at " + msg.body.timestamp;
-						//bot.beginDialog(addr, '/alert', msg);
+						var message = {
+							address: addr,
+							user: addr.user,
+							text: "WARNING: " + msg.body.result + " at " + msg.body.timestamp
+						};
+						
 						bot.send(message);
 
 					}
@@ -166,7 +167,6 @@ bot.dialog('/', [
 		else if(results.response == 4){
 			if(session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
 				var query = "DELETE FROM AlertSubscription WHERE UserId = '" + session.message.address.user.id + "'";
-				//console.log(session.message.address.user.id);
 				sql.connect(config, function(err) {
 					if(err) {
 						session.send("DB ERROR");
@@ -177,7 +177,6 @@ bot.dialog('/', [
 					request.query(query, function(err, recordset){
 						console.log(err);
 						session.userData.ReceiveAlert = false;
-						//if(err == undefined) session.userData.ReceiveAlert = true;
 						var msg = {
 							text: "You have unsubscribed.",
 							dialog: '/'
@@ -216,8 +215,6 @@ bot.dialog('/query-interval', [
 		if(results.response){
 			if(results.response >= 1 && results.response <= 7){
 				var query = 'SELECT TOP ' + results.response.toString() + ' Result,Timestamp FROM Vibration ORDER BY Timestamp DESC';
-				//console.log(query);
-				//config.stream = true;
 				sql.connect(config, function(err) {
 					if(err) {
 						session.send("DB ERROR");
@@ -231,7 +228,6 @@ bot.dialog('/query-interval', [
 					});
 					
 				});
-				//config.stream = false;
 				
 			}
 			else{
@@ -247,17 +243,6 @@ bot.dialog('/query-interval', [
 		}
 	}]
 );
-
-bot.dialog('/alert', function(session){
-	try{
-		var msg = session.options.dialogArgs.params;
-		session.send("WARNING: " + msg.result + " at " + msg.timestamp);
-		session.endDialog();
-	} catch(err){
-		console.log(err);
-	}
-	
-});
 
 // Install First Run middleware and dialog
 bot.use(builder.Middleware.firstRun({ version: 1.0, dialogId: '*:/firstRun' }));
