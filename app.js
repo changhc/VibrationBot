@@ -28,7 +28,7 @@ server.get('/', restify.serveStatic({
  directory: __dirname,
  default: '/index.html'
 }));
-var sess;
+
 server.post('/testestest', function(req, res){
 	if(bot != null){
 		
@@ -103,7 +103,7 @@ bot.dialog('/', [
 		builder.Prompts.number(session, "Hi " + session.userData.name + ", what would you like to know about?\n\r1. Current status\n\r2. Previous warnings\n\r3. Subscribe\n\r4. Unsubscribe");
 	},
 	function(session, results){
-		
+		var msg;
 		if(results.response == 1) {
 			var value, time;
 			sql.connect(config, function(err) {
@@ -115,11 +115,8 @@ bot.dialog('/', [
 				var request = new sql.Request();
 				var query = 'SELECT TOP 1 Chl_1_Overall,Chl_2_Overall,Channel_1_gSE_Overall,Channel_2_gSE_Overall,Result,Timestamp FROM Vibration ORDER BY Timestamp DESC';
 				request.query(query, function(err, recordset){
-					console.log(recordset[0].Result);
-					session.send("Status at " + recordset[0].Timestamp + " is " + recordset[0].Result + ". \n\rChl_1_Overall: " + recordset[0].Chl_1_Overall + "\n\rChl_2_Overall: " + recordset[0].Chl_2_Overall + "\n\rChannel_1_gSE_Overall: " + recordset[0].Channel_1_gSE_Overall + "\n\rChannel_2_gSE_Overall: " + recordset[0].Channel_2_gSE_Overall);
-
-					session.endDialog();
-					session.beginDialog('/');
+					
+					send_msg_query(recordset, 1, session, send_msg);
 
 				});
 				
@@ -127,8 +124,7 @@ bot.dialog('/', [
 
 		}
 		else if( results.response == 2 ){
-			session.endDialog();
-			session.beginDialog('/query-interval');
+			restartDialog(session, '/query-interval');
 		}
 		else if (results.response == 3) {
 			if(!session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
@@ -143,52 +139,70 @@ bot.dialog('/', [
 					request.query(query, function(err, recordset){
 						console.log(err);
 						if(err == undefined) session.userData.ReceiveAlert = true;
-						subscribe_msg(session, function(session){
-							session.endDialog();
-							session.beginDialog('/');
-						});
+						var msg = {
+							text: "You are now subscribed.",
+							dialog: '/'
+						};
+						send_msg(session, msg, restartDialog);
 					});
 					
 				});
 			}
 			else if(session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
-				session.send("You have already subscribed.");
-				session.endDialog();
-				session.beginDialog('/');
+				var msg = {
+					text: "You have already subscribed.",
+					dialog: '/'
+				};
+				send_msg(session, msg, restartDialog);
 			}
 			else{
-				session.send("Sorry, only Skype users can subscribe.");
-				session.endDialog();
-				session.beginDialog('/');
+				var msg = {
+					text: "Sorry, only Skype users can subscribe.",
+					dialog: '/'
+				};
+				send_msg(session, msg, restartDialog);
 			}
 		}
 		else if(results.response == 4){
-			var query = "DELETE FROM AlertSubscription WHERE UserId = '" + session.message.address.user.id + "'";
-			console.log(session.message.address.user.id);
-			sql.connect(config, function(err) {
-				if(err) {
-					session.send("DB ERROR");
-					session.endDialog();
-				}
-				var request = new sql.Request();
-				
-				request.query(query, function(err, recordset){
-					console.log(err);
-					session.userData.ReceiveAlert = false;
-					//if(err == undefined) session.userData.ReceiveAlert = true;
-					session.send("You have unsubscribed.");
-					session.endDialog();
-					session.beginDialog('/');
+			if(session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
+				var query = "DELETE FROM AlertSubscription WHERE UserId = '" + session.message.address.user.id + "'";
+				//console.log(session.message.address.user.id);
+				sql.connect(config, function(err) {
+					if(err) {
+						session.send("DB ERROR");
+						session.endDialog();
+					}
+					var request = new sql.Request();
+					
+					request.query(query, function(err, recordset){
+						console.log(err);
+						session.userData.ReceiveAlert = false;
+						//if(err == undefined) session.userData.ReceiveAlert = true;
+						var msg = {
+							text: "You have unsubscribed.",
+							dialog: '/'
+						};
+						send_msg(session, msg, restartDialog);
+					});
+					
 				});
-				
-			});
+			}
+			else{
+				var msg = {
+					text: "You are not subscribed.",
+					dialog: '/'
+				};
+				send_msg(session, msg, restartDialog);
+			}
 			
 		}
 			
 		else {
-			session.send("I can't understand. Try again.");
-			session.endDialog();
-			session.beginDialog('/');
+			var msg = {
+				text: "I can't understand. Try again.",
+				dialog: '/'
+			};
+			send_msg(session, msg, restartDialog);
 		}
 
 	}
@@ -202,7 +216,7 @@ bot.dialog('/query-interval', [
 		if(results.response){
 			if(results.response >= 1 && results.response <= 7){
 				var query = 'SELECT TOP ' + results.response.toString() + ' Result,Timestamp FROM Vibration ORDER BY Timestamp DESC';
-				console.log(query);
+				//console.log(query);
 				//config.stream = true;
 				sql.connect(config, function(err) {
 					if(err) {
@@ -213,10 +227,7 @@ bot.dialog('/query-interval', [
 					
 					request.query(query, function(err, recordset){
 						console.log(recordset.length);
-						send_msg(recordset, session, function(session){
-							session.endDialog();
-							session.beginDialog('/');
-						});
+						send_msg_query(recordset, 2, session, send_msg);
 					});
 					
 				});
@@ -224,14 +235,15 @@ bot.dialog('/query-interval', [
 				
 			}
 			else{
-				session.send("Invalid input. Try Again.");
-				session.endDialog();
-				session.beginDialog('/query-interval');
+				var msg = {
+					text: "Invalid input. Try Again.",
+					dialog: '/query-interval'
+				};
+				send_msg(session, msg, restartDialog);
 			}
 		}
 		else{
-			session.endDialog();
-			session.beginDialog('/');
+			restartDialog(session, '/');
 		}
 	}]
 );
@@ -255,31 +267,42 @@ bot.dialog('/firstRun', [
 		
 	},
 	function (session, results) {
-		// We'll save the prompts result and return control to main through
-		// a call to replaceDialog(). We need to use replaceDialog() because
-		// we intercepted the original call to main and we want to remove the
-		// /firstRun dialog from the callstack. If we called endDialog() here
-		// the conversation would end since the /firstRun dialog is the only 
-		// dialog on the stack.
 		session.userData.name = results.response;
 		session.userData.ReceiveAlert = false;
 		session.replaceDialog('/'); 
 	}
 ]);
 
-function send_msg(recordset, session, callback){
+function send_msg_query(recordset, choice, session, callback){
 	var msg;
 	if(recordset != null){
-		msg = recordset[0].Result + " at " + recordset[0].Timestamp + '\n\r';
-		for(i = 1; i < recordset.length; ++i){
-			msg += (recordset[i].Result + " at " + recordset[i].Timestamp + '\n\r');
+		if(choice == 1){
+			msg = {
+				text: "Status at " + recordset[0].Timestamp + " is " + recordset[0].Result + ". \n\rChl_1_Overall: " + recordset[0].Chl_1_Overall + "\n\rChl_2_Overall: " + recordset[0].Chl_2_Overall + "\n\rChannel_1_gSE_Overall: " + recordset[0].Channel_1_gSE_Overall + "\n\rChannel_2_gSE_Overall: " + recordset[0].Channel_2_gSE_Overall,
+				dialog: '/'
+			};
 		}
+		else if(choice == 2){
+			msg = {
+				text: recordset[0].Result + " at " + recordset[0].Timestamp + '\n\r',
+				dialog: '/'
+			};
+			for(i = 1; i < recordset.length; ++i){
+				msg.text += (recordset[i].Result + " at " + recordset[i].Timestamp + '\n\r');
+			}
+		}
+		
 	}
-	session.send(msg);
-	callback(session);
+	//session.send(msg);
+	callback(session, msg, restartDialog);
 }
 
-function subscribe_msg(session, callback){
-	session.send("You are now subscribed.");
-	callback(session);
+function send_msg(session, msg, callback){
+	session.send(msg.text);
+	callback(session, msg.dialog);
+}
+
+function restartDialog(session, dialog){
+	session.endDialog();
+	session.beginDialog(dialog);
 }
