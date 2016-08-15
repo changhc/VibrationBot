@@ -133,7 +133,7 @@ bot.dialog('/', [
 			restartDialog(session, '/query-interval');
 		}
 		else if (results.response == 3) {
-			if(!session.userData.ReceiveAlert ){
+			if(!session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
 				var query = "INSERT INTO AlertSubscription (ChannelId, ConvId, UserName, BotId, UserId, ServiceURL) VALUES ('" + session.message.address.channelId + "', '" + session.message.address.conversation.id + "', '" + session.userData.name + "', '" + session.message.address.bot.id + "', '" + session.message.address.user.id + "', '" + session.message.address.serviceUrl + "');";
 				sql.connect(config, function(err) {
 					if(err) {
