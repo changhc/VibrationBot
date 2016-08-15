@@ -63,7 +63,9 @@ server.post('/testestest', function(req, res){
 						var message = {
 							address: addr,
 							user: addr.user,
-							text: text
+							text: text,
+							agent: 'botbuilder',
+							type: 'message'
 						};
 						
 						bot.send(message);
@@ -102,6 +104,8 @@ var bot = new builder.UniversalBot(connector);
 bot.dialog('/', [
 
 	function (session) {
+		console.log(new builder.Message(session).toMessage());
+		session.send(session);
 		builder.Prompts.number(session, "Hi " + session.userData.name + ", what would you like to know about?\n\r1. Current status\n\r2. Previous warnings\n\r3. Subscribe\n\r4. Unsubscribe");
 	},
 	function(session, results){
@@ -129,7 +133,7 @@ bot.dialog('/', [
 			restartDialog(session, '/query-interval');
 		}
 		else if (results.response == 3) {
-			if(!session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
+			if(!session.userData.ReceiveAlert ){
 				var query = "INSERT INTO AlertSubscription (ChannelId, ConvId, UserName, BotId, UserId, ServiceURL) VALUES ('" + session.message.address.channelId + "', '" + session.message.address.conversation.id + "', '" + session.userData.name + "', '" + session.message.address.bot.id + "', '" + session.message.address.user.id + "', '" + session.message.address.serviceUrl + "');";
 				sql.connect(config, function(err) {
 					if(err) {
