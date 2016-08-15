@@ -36,8 +36,8 @@ server.post('/testestest', function(req, res){
 	
 		sql.connect(config, function(err) {
 			if(err) {
-				//session.send("DB ERROR");
-				//session.endDialog();
+				session.send("DB ERROR");
+				session.endDialog();
 			}
 			//console.log(err);
 			var request = new sql.Request();
