@@ -36,8 +36,8 @@ server.post('/testestest', function(req, res){
 	
 		sql.connect(config, function(err) {
 			if(err) {
-				session.send("DB ERROR");
-				session.endDialog();
+				//session.send("DB ERROR");
+				//session.endDialog();
 			}
 			//console.log(err);
 			var request = new sql.Request();
@@ -104,34 +104,18 @@ var bot = new builder.UniversalBot(connector);
 bot.dialog('/', [
 
 	function (session) {
-		console.log(new builder.Message(session).toMessage());
-		session.send(session);
-		builder.Prompts.number(session, "Hi " + session.userData.name + ", what would you like to know about?\n\r1. Current status\n\r2. Previous warnings\n\r3. Subscribe\n\r4. Unsubscribe");
+
+		builder.Prompts.number(session, "Hi " + session.userData.name + ", what would you like to do?\n\r1. Fetch some information\n\r2. Change your name\n\r3. Subscribe\n\r4. Unsubscribe");
+	
 	},
 	function(session, results){
-		var msg;
 		if(results.response == 1) {
-			var value, time;
-			sql.connect(config, function(err) {
-				if(err) {
-					session.send("DB ERROR");
-					session.endDialog();
-				}
-				//console.log(err);
-				var request = new sql.Request();
-				var query = 'SELECT TOP 1 Chl_1_Overall,Chl_2_Overall,Channel_1_gSE_Overall,Channel_2_gSE_Overall,Result,Timestamp FROM Vibration ORDER BY Timestamp DESC';
-				request.query(query, function(err, recordset){
-					
-					send_msg_query(recordset, 1, session, send_msg);
-
-				});
-				
-			});
-
+			session.replaceDialog('/info');
 		}
 		else if( results.response == 2 ){
-			restartDialog(session, '/query-interval');
+			session.replaceDialog('/change-name');
 		}
+
 		else if (results.response == 3) {
 			if(!session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
 				var query = "INSERT INTO AlertSubscription (ChannelId, ConvId, UserName, BotId, UserId, ServiceURL) VALUES ('" + session.message.address.channelId + "', '" + session.message.address.conversation.id + "', '" + session.userData.name + "', '" + session.message.address.bot.id + "', '" + session.message.address.user.id + "', '" + session.message.address.serviceUrl + "');";
@@ -149,7 +133,7 @@ bot.dialog('/', [
 							text: "You are now subscribed.",
 							dialog: '/'
 						};
-						send_msg(session, msg, restartDialog);
+						send_msg(session, msg);
 					});
 					
 				});
@@ -159,14 +143,14 @@ bot.dialog('/', [
 					text: "You have already subscribed.",
 					dialog: '/'
 				};
-				send_msg(session, msg, restartDialog);
+				send_msg(session, msg);
 			}
 			else{
 				var msg = {
 					text: "Sorry, only Skype users can subscribe.",
 					dialog: '/'
 				};
-				send_msg(session, msg, restartDialog);
+				send_msg(session, msg);
 			}
 		}
 		else if(results.response == 4){
@@ -186,7 +170,7 @@ bot.dialog('/', [
 							text: "You have unsubscribed.",
 							dialog: '/'
 						};
-						send_msg(session, msg, restartDialog);
+						send_msg(session, msg);
 					});
 					
 				});
@@ -196,7 +180,7 @@ bot.dialog('/', [
 					text: "You are not subscribed.",
 					dialog: '/'
 				};
-				send_msg(session, msg, restartDialog);
+				send_msg(session, msg);
 			}
 			
 		}
@@ -206,12 +190,89 @@ bot.dialog('/', [
 				text: "I can't understand. Try again.",
 				dialog: '/'
 			};
-			send_msg(session, msg, restartDialog);
+			send_msg(session, msg);
 		}
 
 	}
 	
 ]);
+
+bot.dialog('/info', [
+	function(session){
+		
+		builder.Prompts.number(session, "What would you like to know about?\n\r1. Current status\n\r2. Previous warnings");
+	
+	},
+	function(session, results){
+		if(results.response){
+			if(results.response == 1) {
+				var value, time;
+				sql.connect(config, function(err) {
+					if(err) {
+						session.send("DB ERROR");
+						session.endDialog();
+					}
+					//console.log(err);
+					var request = new sql.Request();
+					var query = 'SELECT TOP 1 Chl_1_Overall,Chl_2_Overall,Channel_1_gSE_Overall,Channel_2_gSE_Overall,Result,Timestamp FROM Vibration ORDER BY Timestamp DESC';
+					request.query(query, function(err, recordset){
+						
+						send_msg_query(recordset, 1, session, send_msg);
+
+					});
+					
+				});
+
+			}
+			else if( results.response == 2 ){
+				session.replaceDialog('/query-interval');
+			}
+			else {
+				var msg = {
+					text: "I can't understand. Try again.",
+					dialog: '/info'
+				};
+				send_msg(session, msg);
+			}
+		}
+		else{
+			session.replaceDialog('/');
+		}
+	}
+]);
+
+bot.dialog('/change-name', [
+	function (session) {
+		builder.Prompts.text(session, "Your new name please?");
+		
+	},
+	function (session, results) {
+		session.userData.name = results.response;
+
+		if(session.message.address.channelId == 'skype'){
+			var query = "UPDATE AlertSubscription SET UserName = '" + results.response + "' WHERE UserId = '" + session.message.address.user.id + "'";
+			sql.connect(config, function(err) {
+				if(err) {
+					session.send("DB ERROR");
+					session.endDialog();
+				}
+				var request = new sql.Request();
+				
+				request.query(query, function(err, recordset){
+					console.log("UserName updated");
+					
+				});
+				
+			});
+		}
+		var msg = {
+			text: "Great. We've recorded your new name.",
+			dialog: '/'
+		};
+		send_msg(session, msg);
+	}
+]);
+
 bot.dialog('/query-interval', [
 	function(session){
 		builder.Prompts.number(session, "How long would you like to query? 1 - 7 days, 0 to quit");
@@ -240,11 +301,11 @@ bot.dialog('/query-interval', [
 					text: "Invalid input. Try Again.",
 					dialog: '/query-interval'
 				};
-				send_msg(session, msg, restartDialog);
+				send_msg(session, msg);
 			}
 		}
 		else{
-			restartDialog(session, '/');
+			session.replaceDialog('/');
 		}
 	}]
 );
@@ -283,16 +344,11 @@ function send_msg_query(recordset, choice, session, callback){
 		}
 		
 	}
-	//session.send(msg);
-	callback(session, msg, restartDialog);
+
+	callback(session, msg);
 }
 
-function send_msg(session, msg, callback){
+function send_msg(session, msg){
 	session.send(msg.text);
-	callback(session, msg.dialog);
-}
-
-function restartDialog(session, dialog){
-	session.endDialog();
-	session.beginDialog(dialog);
+	session.replaceDialog(msg.dialog);
 }
