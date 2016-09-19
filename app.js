@@ -100,6 +100,10 @@ var config = {
 
 //var connector = new builder.ConsoleConnector().listen();		//console test 
 var bot = new builder.UniversalBot(connector);
+builder.Prompts.configure( {maxRetries: 999} );
+
+// Install First Run middleware and dialog
+bot.use(builder.Middleware.firstRun({ version: 1.0, dialogId: '*:/firstRun' }));
 
 bot.dialog('/', [
 
@@ -275,7 +279,7 @@ bot.dialog('/change-name', [
 
 bot.dialog('/query-interval', [
 	function(session){
-		builder.Prompts.number(session, "How long would you like to query? 1 - 7 days, 0 to quit");
+		builder.Prompts.number(session, "How many records would you like to query? 1 - 7, 0 to quit");
 	},
 	function(session, results){
 		if(results.response){
@@ -310,8 +314,6 @@ bot.dialog('/query-interval', [
 	}]
 );
 
-// Install First Run middleware and dialog
-bot.use(builder.Middleware.firstRun({ version: 1.0, dialogId: '*:/firstRun' }));
 bot.dialog('/firstRun', [
 	function (session) {
 		builder.Prompts.text(session, "Hello... What's your name?");
