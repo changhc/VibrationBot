@@ -59,7 +59,7 @@ server.post('/testestest', function(req, res){
 							'serviceUrl': recordset[i].ServiceURL,
 							'useAuth': true
 						};
-						var text = "WARNING: " + msg.body.result + " at " + msg.body.timestamp;
+						var text = "WARNING: " + msg.body.result + " at " + msg.body.timestamp + "\n\rProbability Score:\n\rOK: " + msg.body.prob_ok + "\n\rFan: " + msg.body.prob_fan + "\n\rUnbalance: " + msg.body.prob_unbalance;
 						var message = {
 							address: addr,
 							user: addr.user,
