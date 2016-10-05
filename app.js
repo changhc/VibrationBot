@@ -61,7 +61,7 @@ server.post('/testestest', function(req, res){
 						};
 						var time = new Date(msg.body.timestamp);
 
-						var text = "WARNING: " + msg.body.result + " at " + time.toLocaleString() + "\n\rProbability Score:\n\rNormal: " + msg.body.normal + "\n\rResonanceR: " + msg.body.resonancer + "\n\rResonanceU: " + msg.body.resonanceu + "\n\rUnbalanced1: " + msg.body.unbalanced1 + "\n\rUnbalanced3: " + msg.body.unbalanced3;
+						var text = "WARNING: " + msg.body.result + " at " + time.toLocaleString() + " (UTC)\n\rProbability Score:\n\rNormal: " + msg.body.normal + "\n\rResonanceR: " + msg.body.resonancer + "\n\rResonanceU: " + msg.body.resonanceu + "\n\rUnbalanced1: " + msg.body.unbalanced1 + "\n\rUnbalanced3: " + msg.body.unbalanced3;
 						var message = {
 							address: addr,
 							user: addr.user,
