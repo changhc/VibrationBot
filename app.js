@@ -221,7 +221,7 @@ bot.dialog('/info', [
 					}
 					//console.log(err);
 					var request = new sql.Request();
-					var query = 'SELECT TOP 1 Chl_1_Overall,Chl_2_Overall,Channel_1_gSE_Overall,Channel_2_gSE_Overall,Result,Timestamp FROM Vibration ORDER BY Timestamp DESC';
+					var query = 'SELECT TOP 1 Ch1_Overall,Ch2_Overall,Ch1_gSE,Ch2_gSE,Result,Timestamp FROM Vibration ORDER BY Timestamp DESC';
 					request.query(query, function(err, recordset){
 						
 						send_msg_query(recordset, 1, session, send_msg);
@@ -334,7 +334,7 @@ function send_msg_query(recordset, choice, session, callback){
 	if(recordset != null){
 		if(choice == 1){
 			msg = {
-				text: "Status at " + recordset[0].Timestamp + " is " + recordset[0].Result + ". \n\rChl_1_Overall: " + recordset[0].Chl_1_Overall + "\n\rChl_2_Overall: " + recordset[0].Chl_2_Overall + "\n\rChannel_1_gSE_Overall: " + recordset[0].Channel_1_gSE_Overall + "\n\rChannel_2_gSE_Overall: " + recordset[0].Channel_2_gSE_Overall,
+				text: "Status at " + recordset[0].Timestamp + " is " + recordset[0].Result + ". \n\rCh1_Overall: " + recordset[0].Ch1_Overall + "\n\rCh2_Overall: " + recordset[0].Ch2_Overall + "\n\rCh1_gSE: " + recordset[0].Ch1_gSE + "\n\rCh2_gSE: " + recordset[0].Ch2_gSE,
 				dialog: '/'
 			};
 		}
