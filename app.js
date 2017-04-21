@@ -12,12 +12,31 @@
 var restify = require('restify'); 
 var builder = require('botbuilder'); 
 var sql = require('mssql');
+
+//DB config
+var config = {
+    user: process.env.DB_USER,
+    password: process.env.DB_PW,
+    server: process.env.DB_SERVER, // You can use 'localhost\\instance' to connect to named instance
+    database: process.env.DB_NAME,
+    //stream: true, // You can enable streaming globally
+
+    options: {
+        encrypt: true // Use this if you're on Windows Azure
+    }
+};
+var connectionPool = new sql.Connection(config);
+
 // Setup Restify Server
 var server = restify.createServer();
 server.use(restify.bodyParser());
-server.listen(process.env.PORT || process.env.port || 3000, function() 
-{
-   console.log('%s listening to %s', server.name, server.url); 
+
+connectionPool.connect().then(() => {
+	server.listen(process.env.PORT || process.env.port || 3000, () => {
+		console.log('%s listening to %s', server.name, server.url); 
+	});
+}).catch((err) => {
+	console.log(err);
 });
 
 // Create chat bot
@@ -32,16 +51,14 @@ server.get('/', restify.serveStatic({
 
 server.post('/testestest', function(req, res){
 	if(bot != null){
-		
 		var msg = req;
-	
 		sql.connect(config, function(err) {
 			if(err) {
 				session.send("DB ERROR");
 				session.endDialog();
 			}
 			//console.log(err);
-			var request = new sql.Request();
+			var request = new sql.Request(connectionPool);
 			
 			request.query("SELECT * FROM AlertSubscription;", function(err, recordset){
 				for(i = 0; i < recordset.length; ++i){
@@ -72,34 +89,16 @@ server.post('/testestest', function(req, res){
 						};
 						
 						bot.send(message);
-
 					}
 					catch(err){
 						console.log(err);
 					}
 				}
-				
 			});
-			
 		});
-		
 		res.send(202);
 	}
 });
-
-
-//DB config
-var config = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PW,
-    server: process.env.DB_SERVER, // You can use 'localhost\\instance' to connect to named instance
-    database: process.env.DB_NAME,
-    //stream: true, // You can enable streaming globally
-
-    options: {
-        encrypt: true // Use this if you're on Windows Azure
-    }
-};
 
 //var connector = new builder.ConsoleConnector().listen();		//console test 
 var bot = new builder.UniversalBot(connector);
@@ -109,11 +108,8 @@ builder.Prompts.configure( {maxRetries: 999} );
 bot.use(builder.Middleware.firstRun({ version: 1.0, dialogId: '*:/firstRun' }));
 
 bot.dialog('/', [
-
 	function (session) {
-
 		builder.Prompts.number(session, "Hi " + session.userData.name + ", what would you like to do?\n\r1. Fetch some information\n\r2. Change your name\n\r3. Subscribe\n\r4. Unsubscribe");
-	
 	},
 	function(session, results){
 		if(results.response == 1) {
@@ -122,7 +118,6 @@ bot.dialog('/', [
 		else if( results.response == 2 ){
 			session.replaceDialog('/change-name');
 		}
-
 		else if (results.response == 3) {
 			if(!session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
 				var query = "INSERT INTO AlertSubscription (ChannelId, ConvId, UserName, BotId, UserId, ServiceURL) VALUES ('" + session.message.address.channelId + "', '" + session.message.address.conversation.id + "', '" + session.userData.name + "', '" + session.message.address.bot.id + "', '" + session.message.address.user.id + "', '" + session.message.address.serviceUrl + "');";
@@ -131,7 +126,7 @@ bot.dialog('/', [
 						session.send("DB ERROR");
 						session.endDialog();
 					}
-					var request = new sql.Request();
+					var request = new sql.Request(connectionPool);
 					
 					request.query(query, function(err, recordset){
 						console.log(err);
@@ -140,7 +135,7 @@ bot.dialog('/', [
 							text: "You are now subscribed.",
 							dialog: '/'
 						};
-						send_msg(session, msg);
+						sendMessage(session, msg);
 					});
 					
 				});
@@ -150,14 +145,14 @@ bot.dialog('/', [
 					text: "You have already subscribed.",
 					dialog: '/'
 				};
-				send_msg(session, msg);
+				sendMessage(session, msg);
 			}
 			else{
 				var msg = {
 					text: "Sorry, only Skype users can subscribe.",
 					dialog: '/'
 				};
-				send_msg(session, msg);
+				sendMessage(session, msg);
 			}
 		}
 		else if(results.response == 4){
@@ -168,7 +163,7 @@ bot.dialog('/', [
 						session.send("DB ERROR");
 						session.endDialog();
 					}
-					var request = new sql.Request();
+					var request = new sql.Request(connectionPool);
 					
 					request.query(query, function(err, recordset){
 						console.log(err);
@@ -177,9 +172,8 @@ bot.dialog('/', [
 							text: "You have unsubscribed.",
 							dialog: '/'
 						};
-						send_msg(session, msg);
+						sendMessage(session, msg);
 					});
-					
 				});
 			}
 			else{
@@ -187,28 +181,22 @@ bot.dialog('/', [
 					text: "You are not subscribed.",
 					dialog: '/'
 				};
-				send_msg(session, msg);
+				sendMessage(session, msg);
 			}
-			
 		}
-			
 		else {
 			var msg = {
 				text: "I can't understand. Try again.",
 				dialog: '/'
 			};
-			send_msg(session, msg);
+			sendMessage(session, msg);
 		}
-
 	}
-	
 ]);
 
 bot.dialog('/info', [
 	function(session){
-		
 		builder.Prompts.number(session, "What would you like to know about?\n\r1. Current status\n\r2. Previous warnings");
-	
 	},
 	function(session, results){
 		if(results.response){
@@ -220,16 +208,12 @@ bot.dialog('/info', [
 						session.endDialog();
 					}
 					//console.log(err);
-					var request = new sql.Request();
+					var request = new sql.Request(connectionPool);
 					var query = 'SELECT TOP 1 Ch1_Overall,Ch2_Overall,Ch1_gSE,Ch2_gSE,Result,Timestamp FROM Vibration ORDER BY Timestamp DESC';
 					request.query(query, function(err, recordset){
-						
-						send_msg_query(recordset, 1, session, send_msg);
-
+						sendQueryResult(recordset, 1, session, sendMessage);
 					});
-					
 				});
-
 			}
 			else if( results.response == 2 ){
 				session.replaceDialog('/query-interval');
@@ -239,7 +223,7 @@ bot.dialog('/info', [
 					text: "I can't understand. Try again.",
 					dialog: '/info'
 				};
-				send_msg(session, msg);
+				sendMessage(session, msg);
 			}
 		}
 		else{
@@ -263,7 +247,7 @@ bot.dialog('/change-name', [
 					session.send("DB ERROR");
 					session.endDialog();
 				}
-				var request = new sql.Request();
+				var request = new sql.Request(connectionPool);
 				
 				request.query(query, function(err, recordset){
 					console.log("UserName updated");
@@ -276,7 +260,7 @@ bot.dialog('/change-name', [
 			text: "Great. We've recorded your new name.",
 			dialog: '/'
 		};
-		send_msg(session, msg);
+		sendMessage(session, msg);
 	}
 ]);
 
@@ -293,11 +277,11 @@ bot.dialog('/query-interval', [
 						session.send("DB ERROR");
 						session.endDialog();
 					}
-					var request = new sql.Request();
+					var request = new sql.Request(connectionPool);
 					
 					request.query(query, function(err, recordset){
 						console.log(recordset.length);
-						send_msg_query(recordset, 2, session, send_msg);
+						sendQueryResult(recordset, 2, session, sendMessage);
 					});
 					
 				});
@@ -308,7 +292,7 @@ bot.dialog('/query-interval', [
 					text: "Invalid input. Try Again.",
 					dialog: '/query-interval'
 				};
-				send_msg(session, msg);
+				sendMessage(session, msg);
 			}
 		}
 		else{
@@ -329,7 +313,7 @@ bot.dialog('/firstRun', [
 	}
 ]);
 
-function send_msg_query(recordset, choice, session, callback){
+function sendQueryResult(recordset, choice, session, callback){
 	var msg;
 	if(recordset != null){
 		if(choice == 1){
@@ -353,7 +337,7 @@ function send_msg_query(recordset, choice, session, callback){
 	callback(session, msg);
 }
 
-function send_msg(session, msg){
+function sendMessage(session, msg){
 	session.send(msg.text);
 	session.replaceDialog(msg.dialog);
 }
