@@ -109,11 +109,7 @@ bot.use(builder.Middleware.firstRun({ version: 1.0, dialogId: '*:/firstRun' }));
 
 bot.dialog('/', intents);
 
-intents.matches('greetings', [
-	function(session, args, next) {
-		session.send('Hi, ' + session.userData.name + '. What can I do for you? You can type "help" to see what I can do.');
-	}
-]);
+intents.matches('greetings', '/greetings');
 
 intents.matches('menu', [
 	function(session, args, next) {
@@ -299,15 +295,36 @@ bot.dialog('/change-name', [
 	}
 ]);
 
+bot.dialog('/greetings', function(session, args, next) {
+  session.send('Hi, ' + session.userData.name + '. What can I do for you? You can type "help" to see what I can do.');
+  session.endDialog();
+});
+
 bot.dialog('/firstRun', [
 	function (session) {
-		builder.Prompts.text(session, "Hello, what's your name?");
+		var query = "SELECT * FROM AlertSubscription WHERE UserId='" + session.message.address.user.id + "' AND ServiceUrl= '" + session.message.address.serviceUrl + "'";
+
+    var request = new sql.Request(connectionPool);
+    request
+      .query(query)   // if this user has subscribed, remember his name
+      .then(function(recordset){
+        console.log(recordset);
+        if (recordset.length !== 0) {
+          session.userData.name = recordset[0].UserName;
+		      session.replaceDialog('/greetings'); 
+        } else {
+          builder.Prompts.text(session, "Hello, what's your name?");
+        }
+      })
+      .catch(function(err) {
+        session.send(err.message);
+        session.endDialog();
+      });
 	},
 	function (session, results) {
 		session.userData.name = results.response;
 		session.userData.ReceiveAlert = false;
-		session.send('Hi, ' + session.userData.name + '. What can I do for you? You can type "help" to see what I can do.');
-		session.replaceDialog('/'); 
+		session.replaceDialog('/greetings'); 
 	}
 ]);
 
