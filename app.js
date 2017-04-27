@@ -55,7 +55,7 @@ server.post('/testestest', function(req, res){
 		var msg = req;
 		sql.connect(config, function(err) {
 			if(err) {
-				session.send("DB ERROR");
+				session.send(err.message);
 				session.endDialog();
 			}
 			//console.log(err);
@@ -125,31 +125,36 @@ intents.matches('ChangeName', '/change-name');
 
 intents.matches('Subscribe', [
 	function(session, args, next) {
-		if(!session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
-			var query = "INSERT INTO AlertSubscription (ChannelId, ConvId, UserName, BotId, UserId, ServiceURL) VALUES ('" + session.message.address.channelId + "', '" + session.message.address.conversation.id + "', '" + session.userData.name + "', '" + session.message.address.bot.id + "', '" + session.message.address.user.id + "', '" + session.message.address.serviceUrl + "');";
+		if(session.message.address.channelId === 'skype'){
+      var query = "SELECT * FROM AlertSubscription WHERE UserId='" + session.message.address.user.id + "' AND ServiceUrl= '" + session.message.address.serviceUrl + "'";
+
 			var request = new sql.Request(connectionPool);
-			
-			request.query(query, function(err, recordset){
-				if (err) {
-					console.log(err);
-					session.send("DB ERROR");
-					session.endDialog();
-				}
-				if(err == undefined) session.userData.ReceiveAlert = true;
-				var msg = {
-					text: "You are now subscribed.",
-					dialog: '/'
-				};
-				sendMessage(session, msg);
-				
-			});
-		}
-		else if(session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
-			var msg = {
-				text: "You have already subscribed.",
-				dialog: '/'
-			};
-			sendMessage(session, msg);
+			request
+        .query(query)   // make sure no previous subscription
+        .then(function(recordset){
+          if (recordset.length !== 0) {
+            throw new Error("You have already subscribed.");
+          }
+          query = "INSERT INTO AlertSubscription (ChannelId, ConvId, UserName, BotId, UserId, ServiceURL) VALUES ('" + session.message.address.channelId + "', '" + session.message.address.conversation.id + "', '" + session.userData.name + "', '" + session.message.address.bot.id + "', '" + session.message.address.user.id + "', '" + session.message.address.serviceUrl + "');";
+          var request2 = new sql.Request(connectionPool);
+          request2
+            .query(query)   // make sure no previous subscription
+            .then(function(recordset){
+              var msg = {
+                text: "You are now subscribed.",
+                dialog: '/'
+              };
+              sendMessage(session, msg);              
+            })
+            .catch(function(err) {
+              session.send(err.message);
+              session.endDialog();
+            });
+        })
+        .catch(function(err) {
+          session.send(err.message);
+          session.endDialog();
+        });
 		}
 		else{
 			var msg = {
@@ -163,22 +168,23 @@ intents.matches('Subscribe', [
 
 intents.matches('Unsubscribe', [
 	function (session, args, next) {
-		if(session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
+		if(session.message.address.channelId === 'skype'){
 			var query = "DELETE FROM AlertSubscription WHERE UserId = '" + session.message.address.user.id + "'";
 			var request = new sql.Request(connectionPool);
 			
-			request.query(query, function(err, recordset){
+			request.query(query, function(err, recordset, rowsAffected){
 				if (err) {
-					console.log(err);
-					session.send("DB ERROR");
+					session.send(err.message);
 					session.endDialog();
 				}
-				session.userData.ReceiveAlert = false;
-				var msg = {
-					text: "You have cancelled your subscription.",
-					dialog: '/'
-				};
-				sendMessage(session, msg);
+        var msg = {
+          text: "You have cancelled your subscription.",
+          dialog: '/'
+        };
+        if (rowsAffected === 0) {
+          msg.text = "You are not subscribed.";
+        }
+        sendMessage(session, msg);
 			});
 		}
 		else{
@@ -273,7 +279,7 @@ bot.dialog('/change-name', [
 			var query = "UPDATE AlertSubscription SET UserName = '" + results.response + "' WHERE UserId = '" + session.message.address.user.id + "'";
 			sql.connect(config, function(err) {
 				if(err) {
-					session.send("DB ERROR");
+					session.send(err.message);
 					session.endDialog();
 				}
 				var request = new sql.Request(connectionPool);
@@ -300,7 +306,7 @@ bot.dialog('/firstRun', [
 	function (session, results) {
 		session.userData.name = results.response;
 		session.userData.ReceiveAlert = false;
-		session.send('Hi, ' + session.userData.name + '. May I help you? You can type "help" to see what I can do.');
+		session.send('Hi, ' + session.userData.name + '. What can I do for you? You can type "help" to see what I can do.');
 		session.replaceDialog('/'); 
 	}
 ]);
