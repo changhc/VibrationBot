@@ -8,10 +8,11 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 *******************/
 
-// Add your requirements
 var restify = require('restify'); 
 var builder = require('botbuilder'); 
 var sql = require('mssql');
+var recognizer = new builder.LuisRecognizer(process.env.LUIS_ENDPOINT);
+var intents = new builder.IntentDialog({ recognizers: [recognizer] });
 
 //DB config
 var config = {
@@ -60,8 +61,9 @@ server.post('/testestest', function(req, res){
 			//console.log(err);
 			var request = new sql.Request(connectionPool);
 			
-			request.query("SELECT * FROM AlertSubscription;", function(err, recordset){
-				for(i = 0; i < recordset.length; ++i){
+			request.query("SELECT * FROM AlertSubscription;", function(error, recordset){
+				if (error) throw error;
+        for(i = 0; i < recordset.length; ++i){
 					try{
 						var addr = {
 							'channelId': recordset[i].ChannelId,
@@ -103,90 +105,55 @@ server.post('/testestest', function(req, res){
 //var connector = new builder.ConsoleConnector().listen();		//console test 
 var bot = new builder.UniversalBot(connector);
 builder.Prompts.configure( {maxRetries: 999} );
-
-// Install First Run middleware and dialog
 bot.use(builder.Middleware.firstRun({ version: 1.0, dialogId: '*:/firstRun' }));
 
-bot.dialog('/', [
-	function (session) {
-		builder.Prompts.number(session, "Hi " + session.userData.name + ", what would you like to do?\n\r1. Fetch some information\n\r2. Change your name\n\r3. Subscribe\n\r4. Unsubscribe");
+bot.dialog('/', intents);
+
+intents.matches('greetings', [
+	function(session, args, next) {
+		session.send('Hi, ' + session.userData.name + '. What can I do for you? You can type "help" to see what I can do.');
+	}
+]);
+
+intents.matches('menu', [
+	function(session, args, next) {
+		session.send('I can help you change your name, query some data, subscribe or cancel subscription. I can also help you check if your system is running normally.');
 	},
-	function(session, results){
-		if(results.response == 1) {
-			session.replaceDialog('/info');
-		}
-		else if( results.response == 2 ){
-			session.replaceDialog('/change-name');
-		}
-		else if (results.response == 3) {
-			if(!session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
-				var query = "INSERT INTO AlertSubscription (ChannelId, ConvId, UserName, BotId, UserId, ServiceURL) VALUES ('" + session.message.address.channelId + "', '" + session.message.address.conversation.id + "', '" + session.userData.name + "', '" + session.message.address.bot.id + "', '" + session.message.address.user.id + "', '" + session.message.address.serviceUrl + "');";
-				sql.connect(config, function(err) {
-					if(err) {
-						session.send("DB ERROR");
-						session.endDialog();
-					}
-					var request = new sql.Request(connectionPool);
-					
-					request.query(query, function(err, recordset){
-						console.log(err);
-						if(err == undefined) session.userData.ReceiveAlert = true;
-						var msg = {
-							text: "You are now subscribed.",
-							dialog: '/'
-						};
-						sendMessage(session, msg);
-					});
-					
-				});
-			}
-			else if(session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
+]);
+
+intents.matches('ChangeName', '/change-name');
+
+intents.matches('Subscribe', [
+	function(session, args, next) {
+		if(!session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
+			var query = "INSERT INTO AlertSubscription (ChannelId, ConvId, UserName, BotId, UserId, ServiceURL) VALUES ('" + session.message.address.channelId + "', '" + session.message.address.conversation.id + "', '" + session.userData.name + "', '" + session.message.address.bot.id + "', '" + session.message.address.user.id + "', '" + session.message.address.serviceUrl + "');";
+			var request = new sql.Request(connectionPool);
+			
+			request.query(query, function(err, recordset){
+				if (err) {
+					console.log(err);
+					session.send("DB ERROR");
+					session.endDialog();
+				}
+				if(err == undefined) session.userData.ReceiveAlert = true;
 				var msg = {
-					text: "You have already subscribed.",
+					text: "You are now subscribed.",
 					dialog: '/'
 				};
 				sendMessage(session, msg);
-			}
-			else{
-				var msg = {
-					text: "Sorry, only Skype users can subscribe.",
-					dialog: '/'
-				};
-				sendMessage(session, msg);
-			}
+				
+			});
 		}
-		else if(results.response == 4){
-			if(session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
-				var query = "DELETE FROM AlertSubscription WHERE UserId = '" + session.message.address.user.id + "'";
-				sql.connect(config, function(err) {
-					if(err) {
-						session.send("DB ERROR");
-						session.endDialog();
-					}
-					var request = new sql.Request(connectionPool);
-					
-					request.query(query, function(err, recordset){
-						console.log(err);
-						session.userData.ReceiveAlert = false;
-						var msg = {
-							text: "You have unsubscribed.",
-							dialog: '/'
-						};
-						sendMessage(session, msg);
-					});
-				});
-			}
-			else{
-				var msg = {
-					text: "You are not subscribed.",
-					dialog: '/'
-				};
-				sendMessage(session, msg);
-			}
-		}
-		else {
+		else if(session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
 			var msg = {
-				text: "I can't understand. Try again.",
+				text: "You have already subscribed.",
+				dialog: '/'
+			};
+			sendMessage(session, msg);
+		}
+		else{
+			var msg = {
+				text: "Sorry, only Skype users can subscribe.",
 				dialog: '/'
 			};
 			sendMessage(session, msg);
@@ -194,42 +161,104 @@ bot.dialog('/', [
 	}
 ]);
 
-bot.dialog('/info', [
-	function(session){
-		builder.Prompts.number(session, "What would you like to know about?\n\r1. Current status\n\r2. Previous warnings");
-	},
-	function(session, results){
-		if(results.response){
-			if(results.response == 1) {
-				var value, time;
-				sql.connect(config, function(err) {
-					if(err) {
-						session.send("DB ERROR");
-						session.endDialog();
-					}
-					//console.log(err);
-					var request = new sql.Request(connectionPool);
-					var query = 'SELECT TOP 1 Ch1_Overall,Ch2_Overall,Ch1_gSE,Ch2_gSE,Result,Timestamp FROM Vibration ORDER BY Timestamp DESC';
-					request.query(query, function(err, recordset){
-						sendQueryResult(recordset, 1, session, sendMessage);
-					});
-				});
-			}
-			else if( results.response == 2 ){
-				session.replaceDialog('/query-interval');
-			}
-			else {
+intents.matches('Unsubscribe', [
+	function (session, args, next) {
+		if(session.userData.ReceiveAlert && session.message.address.channelId == 'skype'){
+			var query = "DELETE FROM AlertSubscription WHERE UserId = '" + session.message.address.user.id + "'";
+			var request = new sql.Request(connectionPool);
+			
+			request.query(query, function(err, recordset){
+				if (err) {
+					console.log(err);
+					session.send("DB ERROR");
+					session.endDialog();
+				}
+				session.userData.ReceiveAlert = false;
 				var msg = {
-					text: "I can't understand. Try again.",
-					dialog: '/info'
+					text: "You have cancelled your subscription.",
+					dialog: '/'
 				};
 				sendMessage(session, msg);
-			}
+			});
 		}
 		else{
-			session.replaceDialog('/');
+			var msg = {
+				text: "You are not subscribed.",
+				dialog: '/'
+			};
+			sendMessage(session, msg);
 		}
-	}
+	},
+]);
+
+intents.matches('None', [
+	function (session, args, next) {
+		var msg = {
+			text: "I can't understand. Try again.",
+			dialog: '/'
+		};
+		sendMessage(session, msg);
+	},
+]);
+
+intents.matches('Query', [
+	function (session, args, next) {
+		var value, time;
+		var request = new sql.Request(connectionPool);
+		if (args.entities.length === 0) {
+			request
+        .execute('USP_Vibration_Select_Count')
+        .then(function (recordset) {
+          console.log(recordset);
+          sendQueryResult(recordset[0], 1, session, sendMessage);
+        })
+        .catch(function (err) {
+          console.log(err);
+        });
+		} else if (!isNaN(parseInt(args.entities[0].entity))) {
+      request
+        .input('Count', sql.Int, parseInt(args.entities[0].entity))
+        .execute('USP_Vibration_Select_Count')
+        .then(function (recordset) {
+          console.log(recordset);
+          sendQueryResult(recordset[0], 2, session, sendMessage);
+        })
+        .catch(function (err) {
+          console.log(err);
+        });
+		} else {
+      request
+        .input('Count', sql.Int, 5)
+        .execute('USP_Vibration_Select_Count')
+        .then(function (recordset) {
+          console.log(recordset);
+          sendQueryResult(recordset[0], 2, session, sendMessage);
+        })
+        .catch(function (err) {
+          console.log(err);
+        });
+		}
+
+	},
+]);
+
+intents.matches('anomaly', [
+  function (session, args, next) {
+    var request = new sql.Request(connectionPool);
+    request.execute('USP_EventLogSelectOne')
+      .then(function (recordset) {
+        var entry = recordset[0][0];
+        if (entry.CurrState === 'Normal') {
+          session.send('Your system is running well!');
+        } else {
+          session.send('Your system has something wrong now.');
+        }
+        session.send('The state of your system changed from ' + entry.PrevState + ' to ' + entry.CurrState + ' at ' + entry.Timestamp + '.');
+      })
+      .catch(function (err) {
+        console.log(err);
+      });
+  },
 ]);
 
 bot.dialog('/change-name', [
@@ -264,51 +293,14 @@ bot.dialog('/change-name', [
 	}
 ]);
 
-bot.dialog('/query-interval', [
-	function(session){
-		builder.Prompts.number(session, "How many records would you like to query? 1 - 7, 0 to quit");
-	},
-	function(session, results){
-		if(results.response){
-			if(results.response >= 1 && results.response <= 7){
-				var query = 'SELECT TOP ' + results.response.toString() + ' Result,Timestamp FROM Vibration ORDER BY Timestamp DESC';
-				sql.connect(config, function(err) {
-					if(err) {
-						session.send("DB ERROR");
-						session.endDialog();
-					}
-					var request = new sql.Request(connectionPool);
-					
-					request.query(query, function(err, recordset){
-						console.log(recordset.length);
-						sendQueryResult(recordset, 2, session, sendMessage);
-					});
-					
-				});
-				
-			}
-			else{
-				var msg = {
-					text: "Invalid input. Try Again.",
-					dialog: '/query-interval'
-				};
-				sendMessage(session, msg);
-			}
-		}
-		else{
-			session.replaceDialog('/');
-		}
-	}]
-);
-
 bot.dialog('/firstRun', [
 	function (session) {
-		builder.Prompts.text(session, "Hello... What's your name?");
-		
+		builder.Prompts.text(session, "Hello, what's your name?");
 	},
 	function (session, results) {
 		session.userData.name = results.response;
 		session.userData.ReceiveAlert = false;
+		session.send('Hi, ' + session.userData.name + '. May I help you? You can type "help" to see what I can do.');
 		session.replaceDialog('/'); 
 	}
 ]);
@@ -339,5 +331,8 @@ function sendQueryResult(recordset, choice, session, callback){
 
 function sendMessage(session, msg){
 	session.send(msg.text);
-	session.replaceDialog(msg.dialog);
+	if (msg.dialog !== '/')
+		session.replaceDialog(msg.dialog);
+	else
+		session.endDialog();
 }
